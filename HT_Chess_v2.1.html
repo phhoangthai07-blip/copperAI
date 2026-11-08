@@ -1,0 +1,241 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>HT Chess — Play & Think</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/chess.js/0.10.3/chess.min.js"></script>
+<style>
+:root{--bg:#071426;--glass:rgba(17,34,58,.66);--glass2:rgba(255,255,255,.075);--line:rgba(180,220,255,.2);--text:#edf6ff;--muted:#9db2ca;--blue:#63b9ff;--accent:#7c9cff;--light:#e8edf2;--dark:#66839d}
+*{box-sizing:border-box}body{margin:0;min-height:100vh;color:var(--text);font-family:Inter,ui-sans-serif,system-ui,-apple-system,"Segoe UI",sans-serif;background:radial-gradient(ellipse at 15% 12%,#174a77 0,transparent 35%),radial-gradient(ellipse at 85% 80%,#202b69 0,transparent 36%),linear-gradient(145deg,#06101e,#0b1e36 55%,#080f20);overflow-x:hidden}
+body:before,body:after{content:"";position:fixed;inset:-30%;pointer-events:none;z-index:-1;background:radial-gradient(circle,rgba(79,174,255,.15) 0 1px,transparent 2px);background-size:68px 68px;animation:drift 45s linear infinite}
+body:after{background-size:113px 113px;opacity:.5;animation-direction:reverse;animation-duration:70s}
+@keyframes drift{to{transform:translate3d(70px,-90px,0) rotate(8deg)}}
+button,select{font:inherit;color:inherit}.app{width:min(1180px,100%);margin:auto;padding:28px 22px 40px}
+header{display:flex;align-items:center;justify-content:space-between;margin-bottom:22px;gap:16px}.brand{display:flex;align-items:center;gap:12px}.logo{width:46px;height:46px;border-radius:16px;display:grid;place-items:center;font-size:28px;background:linear-gradient(145deg,rgba(116,190,255,.3),rgba(80,100,210,.2));border:1px solid var(--line);box-shadow:0 8px 28px #0005,inset 0 1px #ffffff40}.brand h1{font-size:21px;margin:0;letter-spacing:.3px}.brand p{margin:3px 0 0;color:var(--muted);font-size:12px;letter-spacing:1.5px;text-transform:uppercase}
+.pill{padding:9px 13px;border:1px solid var(--line);border-radius:99px;background:var(--glass2);color:#cfe8ff;font-size:12px;backdrop-filter:blur(18px)}
+.layout{display:grid;grid-template-columns:minmax(0,1fr) 330px;gap:22px;align-items:start}
+.panel{background:var(--glass);border:1px solid var(--line);border-radius:24px;box-shadow:0 18px 60px #0005,inset 0 1px #ffffff15;backdrop-filter:blur(24px);-webkit-backdrop-filter:blur(24px)}
+.board-panel{padding:clamp(12px,2vw,22px)}
+.player{display:flex;align-items:center;gap:11px;padding:4px 4px 13px}.avatar{width:36px;height:36px;border-radius:13px;display:grid;place-items:center;background:linear-gradient(145deg,#426b91,#213b5b);border:1px solid #ffffff30;font-size:19px}.player strong{font-size:14px}.player small{display:block;color:var(--muted);font-size:11px;margin-top:2px}
+.board-wrap{width:100%;max-width:690px;margin:auto;position:relative;border-radius:10px;overflow:hidden;box-shadow:0 18px 40px #0008,0 0 0 5px #ffffff12;touch-action:manipulation}
+.board{display:grid;grid-template-columns:repeat(8,minmax(0,1fr));grid-template-rows:repeat(8,minmax(0,1fr));width:100%;aspect-ratio:1;user-select:none;min-width:0;min-height:0}
+.square{position:relative;display:grid;place-items:center;border:0;padding:0;margin:0;width:100%;height:100%;min-width:0;min-height:0;overflow:hidden;cursor:pointer;transition:filter .12s,transform .12s}
+.square.light{background:#e6edf2}.square.dark{background:#64819a}.square:active{filter:brightness(1.13);transform:scale(.96)}.square{touch-action:none;-webkit-user-select:none;user-select:none}
+.square.in-check{background:#ef4444!important;animation:kingShake .42s ease-in-out infinite;box-shadow:inset 0 0 0 4px #ff2020,0 0 20px #ef444488;z-index:3}
+.square.in-check .piece{animation:piecePulse .7s ease-in-out infinite;filter:drop-shadow(0 0 8px #ff1616)}
+@keyframes kingShake{0%,100%{transform:translateX(0)}20%{transform:translateX(-3px)}40%{transform:translateX(3px)}60%{transform:translateX(-2px)}80%{transform:translateX(2px)}}
+@keyframes piecePulse{0%,100%{transform:scale(1)}50%{transform:scale(1.12)}}
+.square.selected{background:#e9d45d!important}.square.last{box-shadow:inset 0 0 0 999px rgba(255,220,75,.25)}
+.square .piece{font-family:"Segoe UI Symbol","Noto Sans Symbols 2",serif;font-size:clamp(28px,6.2vw,64px);line-height:1;z-index:1;filter:drop-shadow(0 2px 1px #0004);transition:transform .16s cubic-bezier(.2,1.5,.4,1)}
+.square:active .piece{transform:scale(1.16)}
+.white-piece{color:#fff;text-shadow:0 1px 2px #17283a,1px 0 #26384b,-1px 0 #26384b,0 -1px #26384b}.black-piece{color:#172331;text-shadow:0 1px 1px #ffffff70}
+.coord{position:absolute;font-size:10px;font-weight:700;opacity:.8;z-index:2;pointer-events:none}.rank{top:3px;left:4px}.file{bottom:2px;right:4px}.light .coord{color:#52677a}.dark .coord{color:#f1f5f9}
+.dot{position:absolute;width:25%;height:25%;border-radius:50%;background:#183c3d88;z-index:2;pointer-events:none}.capture-mark{position:absolute;inset:4%;border:4px solid #173d3d66;border-radius:50%;z-index:2;pointer-events:none}
+.board-footer{display:flex;justify-content:space-between;align-items:center;gap:10px;margin-top:14px;color:var(--muted);font-size:12px}
+.side{padding:20px;display:flex;flex-direction:column;gap:17px}.section-title{font-size:12px;text-transform:uppercase;letter-spacing:1.3px;color:#a9c6e3;font-weight:750;margin-bottom:10px}
+.status{padding:14px;border-radius:17px;background:linear-gradient(135deg,rgba(79,157,226,.17),rgba(116,119,255,.09));border:1px solid #91caff32}.status strong{font-size:15px}.status p{margin:5px 0 0;font-size:12px;color:var(--muted)}
+.field{display:flex;flex-direction:column;gap:8px}.field label{font-size:12px;color:var(--muted)}select{width:100%;padding:12px 14px;border-radius:13px;background:#122b45;border:1px solid var(--line);outline:none}
+.actions{display:grid;grid-template-columns:1fr 1fr;gap:9px}.btn{border:1px solid var(--line);background:rgba(255,255,255,.08);border-radius:13px;padding:11px 12px;cursor:pointer;transition:transform .16s cubic-bezier(.2,1.5,.4,1),background .2s,box-shadow .2s;font-size:13px}.btn:hover{background:rgba(112,184,255,.17);box-shadow:0 6px 18px #0003}.btn:active{transform:scale(.94)}.btn.primary{background:linear-gradient(135deg,#398bd0,#536bd0);border-color:#8acaff66;box-shadow:0 7px 22px #2f75bb44}.btn:disabled{opacity:.35;cursor:not-allowed}
+.moves{height:210px;overflow:auto;border-radius:14px;background:#07172a70;border:1px solid #ffffff12;padding:7px}.move-row{display:grid;grid-template-columns:32px 1fr 1fr;gap:7px;padding:7px 8px;border-radius:8px;font-size:13px}.move-row:nth-child(odd){background:#ffffff08}.move-no{color:#7893ad}.move-cell{font-weight:650}
+.tip{font-size:11px;line-height:1.6;color:var(--muted)}.toast{min-height:18px;color:#ffc8a8;font-size:12px}
+.end-overlay{display:none;position:absolute;inset:0;z-index:6;align-items:center;justify-content:center;text-align:center;padding:20px;background:rgba(4,13,27,.72);backdrop-filter:blur(12px)}.end-overlay.show{display:flex}.end-card{max-width:90%;padding:22px 26px;border:1px solid #ffffff35;border-radius:22px;background:rgba(22,43,68,.88);box-shadow:0 18px 55px #0008}.end-card strong{display:block;font-size:clamp(20px,4vw,32px);margin-bottom:8px}.end-card p{margin:0;color:#d1e4f5;font-size:14px}
+
+.captured-panel{display:grid;gap:10px;padding:13px;border-radius:16px;background:#07172a70;border:1px solid #ffffff12}
+.capture-row{display:grid;grid-template-columns:54px 1fr auto;align-items:center;gap:8px;font-size:13px}
+.capture-icons{font-size:19px;letter-spacing:1px;overflow-wrap:anywhere}.material-score{font-weight:800;color:#8fd2ff;white-space:nowrap}
+.custom-grid{display:grid;grid-template-columns:1fr 1fr;gap:9px}
+body[data-theme="blue"]{background:radial-gradient(ellipse at 15% 12%,#174a77,transparent 35%),radial-gradient(ellipse at 85% 80%,#202b69,transparent 36%),linear-gradient(145deg,#06101e,#0b1e36 55%,#080f20)}
+body[data-theme="violet"]{background:radial-gradient(ellipse at 15% 12%,#503477,transparent 35%),radial-gradient(ellipse at 85% 80%,#302b69,transparent 36%),linear-gradient(145deg,#120b20,#25183d 55%,#100d20)}
+body[data-theme="emerald"]{background:radial-gradient(ellipse at 15% 12%,#145b50,transparent 35%),radial-gradient(ellipse at 85% 80%,#174b50,transparent 36%),linear-gradient(145deg,#061a19,#0b302d 55%,#081b20)}
+body[data-theme="rose"]{background:radial-gradient(ellipse at 15% 12%,#71364c,transparent 35%),radial-gradient(ellipse at 85% 80%,#512b62,transparent 36%),linear-gradient(145deg,#210e1b,#3a1832 55%,#170d20)}
+body[data-board="wood"] .square.light{background:#f0d6ad}body[data-board="wood"] .square.dark{background:#a66d43}
+body[data-board="green"] .square.light{background:#eeeed2}body[data-board="green"] .square.dark{background:#769656}
+body[data-board="blue"] .square.light{background:#dceaf4}body[data-board="blue"] .square.dark{background:#6289ad}
+
+body[data-theme="rose"] .panel{border-color:rgba(253,164,175,.3)}
+body[data-theme="emerald"] .panel{border-color:rgba(110,231,183,.28)}
+body[data-piece="bold"] .square .piece{font-weight:900;text-shadow:0 2px 2px #0008,0 0 8px #ffffff55}
+body[data-piece="minimal"] .square .piece{font-family:ui-monospace,monospace;font-size:clamp(22px,5vw,48px);font-weight:800}
+.promotion{display:none;position:absolute;inset:0;background:#061426bb;backdrop-filter:blur(8px);z-index:5;align-items:center;justify-content:center;gap:9px}.promotion.show{display:flex}.promotion button{font-size:35px;width:58px;height:62px;border-radius:14px;background:#e8eef4;color:#172331;border:0;cursor:pointer;box-shadow:0 8px 20px #0005}.promotion button:active{transform:scale(.9)}
+@media(max-width:850px){.layout{grid-template-columns:1fr}.side{display:grid;grid-template-columns:1fr 1fr}.side .moves-section{grid-column:1/-1}.moves{height:150px}}
+@media(max-width:520px){.app{padding:17px 12px 28px}.side{display:flex;padding:15px}.brand h1{font-size:18px}.pill{font-size:10px}.board-panel{padding:10px}.square .piece{font-size:clamp(27px,10vw,48px)}}
+</style>
+</head>
+<body>
+<div class="app">
+<header><div class="brand"><div class="logo">♞</div><div><h1>HT Chess</h1><p>Think · Play · Improve</p></div></div><div class="pill">✦ LIQUID GLASS EDITION</div></header>
+<main class="layout">
+<section class="panel board-panel">
+ <div class="player"><div class="avatar">🤖</div><div><strong>HT Engine</strong><small id="engineLabelTop">Máy tính · Trung bình · Đen</small></div></div>
+ <div class="board-wrap"><div id="board" class="board" aria-label="Bàn cờ vua"></div><div class="promotion" id="promotion"></div><div class="end-overlay" id="endOverlay"><div class="end-card"><strong id="endTitle">Ván đấu kết thúc</strong><p id="endText"></p><button class="btn primary" id="endNew" style="margin-top:14px">Ván mới</button></div></div></div>
+ <div class="board-footer"><span id="turnText">Trắng đi trước</span><span>♙ Trắng&nbsp;&nbsp; ♟ Đen</span></div>
+ <div class="player" style="padding:13px 4px 0"><div class="avatar">♙</div><div><strong>Bạn</strong><small>Trắng · Người chơi</small></div></div>
+</section>
+<aside class="panel side">
+ <div class="status"><strong id="statusTitle">Sẵn sàng khai cuộc</strong><p id="statusSub">Bạn cầm quân Trắng. Nhấn hoặc kéo quân đến ô muốn đi.</p></div>
+  <div class="status"><strong>♜ ELO của bạn</strong><p><span id="eloValue" style="font-size:25px;font-weight:850;color:#8fd2ff">100</span> <span id="eloChange" style="margin-left:8px"></span></p><p id="eloSub">Mức khởi đầu: 100 ELO · Điểm được cập nhật sau mỗi ván.</p></div>
+  <div class="captured-panel"><div class="section-title">Quân đã mất và điểm đã ăn</div><div class="capture-row"><strong>Trắng mất</strong><span class="capture-icons" id="whiteCaptured">—</span><span class="material-score" id="whiteMaterial">0 điểm</span></div><div class="capture-row"><strong>Đen mất</strong><span class="capture-icons" id="blackCaptured">—</span><span class="material-score" id="blackMaterial">0 điểm</span></div><div class="tip" id="materialLead">Hai bên đang cân bằng vật chất.</div></div>
+  <div class="field"><label>TÙY CHỈNH GIAO DIỆN</label><div class="custom-grid"><div><label for="themeChoice">Màu giao diện</label><select id="themeChoice"><option value="blue">Đại dương</option><option value="violet">Tím</option><option value="emerald">Ngọc lục bảo</option><option value="rose">Hồng</option></select></div><div><label for="boardChoice">Màu bàn cờ</label><select id="boardChoice"><option value="default">Tiêu chuẩn</option><option value="wood">Gỗ</option><option value="green">Xanh cổ điển</option><option value="blue">Xanh băng</option></select></div><div style="grid-column:1/-1"><label for="pieceChoice">Kiểu quân cờ</label><select id="pieceChoice"><option value="classic">Cổ điển</option><option value="bold">Đậm nét</option><option value="mono">Tối giản (chữ)</option></select></div></div></div>
+ <div class="field"><label for="level">ĐỘ KHÓ CỦA MÁY</label><select id="level"><option value="easy">Dễ · Làm quen</option><option value="medium" selected>Trung bình · Thử thách</option><option value="hard">Khó · Chiến thuật</option></select></div>
+ <div class="actions"><button class="btn primary" id="newGame">＋ Ván mới</button><button class="btn" id="flip">⇅ Lật bàn cờ</button><button class="btn" id="hint">✧ Gợi ý</button></div>
+ <div class="moves-section"><div class="section-title">Lịch sử nước đi</div><div class="moves" id="moves"><div class="tip">Các nước đi sẽ xuất hiện tại đây.</div></div></div>
+ <div class="toast" id="toast"></div>
+ <div class="tip">Mẹo: Nhấn quân rồi chọn ô đích, hoặc kéo quân bằng chuột/ngón tay. Danh sách quân mất và điểm ăn được cập nhật tự động.</div>
+</aside>
+</main>
+</div>
+<script>
+(() => {
+ if(typeof Chess==="undefined"){document.getElementById("statusTitle").textContent="Không tải được bộ luật cờ";document.getElementById("statusSub").textContent="Hãy kết nối Internet rồi tải lại trang.";return;}
+ const game=new Chess();
+ const endOverlay=document.getElementById("endOverlay"),endTitle=document.getElementById("endTitle"),endText=document.getElementById("endText");
+ const board=document.getElementById("board"),movesBox=document.getElementById("moves"),statusTitle=document.getElementById("statusTitle"),statusSub=document.getElementById("statusSub"),turnText=document.getElementById("turnText"),toast=document.getElementById("toast"),level=document.getElementById("level"),promotion=document.getElementById("promotion");
+ const glyph={wk:"♔",wq:"♕",wr:"♖",wb:"♗",wn:"♘",wp:"♙",bk:"♚",bq:"♛",br:"♜",bb:"♝",bn:"♞",bp:"♟"};
+ const values={p:100,n:320,b:335,r:500,q:900,k:20000};
+ let selected=null,legal=[],lastMove=null,flipped=false,busy=false,history=[],hintMove=null;
+  let elo=Number(localStorage.getItem("ht_chess_elo")||100),eloApplied=false;
+  const glyphSets={
+   classic:{wk:"♔",wq:"♕",wr:"♖",wb:"♗",wn:"♘",wp:"♙",bk:"♚",bq:"♛",br:"♜",bb:"♝",bn:"♞",bp:"♟"},
+   bold:{wk:"♔",wq:"♕",wr:"♖",wb:"♗",wn:"♘",wp:"♙",bk:"♚",bq:"♛",br:"♜",bb:"♝",bn:"♞",bp:"♟"},
+   mono:{wk:"K",wq:"Q",wr:"R",wb:"B",wn:"N",wp:"P",bk:"k",bq:"q",br:"r",bb:"b",bn:"n",bp:"p"}
+  };
+  let activeGlyphs=glyphSets.classic;
+  const points={p:1,n:3,b:3,r:5,q:9,k:0};
+  function updateElo(change=""){document.getElementById("eloValue").textContent=elo;document.getElementById("eloChange").textContent=change;}
+  function updateCaptured(){
+   const taken=game.history({verbose:true}),whiteLost=[],blackLost=[];
+   let whiteScore=0,blackScore=0;
+   taken.forEach(m=>{
+    if(!m.captured)return;
+    const value=points[m.captured];
+    const capturedSide=m.color==="w"?"b":"w";
+    const icon=glyphSets.classic[capturedSide+m.captured];
+    if(capturedSide==="w")whiteLost.push(icon);else blackLost.push(icon);
+    if(m.color==="w")whiteScore+=value;else blackScore+=value;
+   });
+   document.getElementById("whiteCaptured").textContent=whiteLost.join(" ")||"Chưa mất quân";
+   document.getElementById("blackCaptured").textContent=blackLost.join(" ")||"Chưa mất quân";
+   document.getElementById("whiteMaterial").textContent="Đen ăn "+blackScore;
+   document.getElementById("blackMaterial").textContent="Trắng ăn "+whiteScore;
+   const diff=whiteScore-blackScore;
+   document.getElementById("materialLead").textContent=
+    diff>0?"Trắng đang ăn hơn "+diff+" điểm.":diff<0?"Đen đang ăn hơn "+Math.abs(diff)+" điểm.":"Hai bên đang ăn quân ngang điểm.";
+  }
+  function settleElo(){
+   if(!game.game_over()||eloApplied)return;
+   const score=game.in_checkmate()?(game.turn()==="b"?1:0):0.5;
+   const opponent={easy:100,medium:500,hard:1000}[level.value]||500;
+   const expected=1/(1+Math.pow(10,(opponent-elo)/400)),delta=Math.round(16*(score-expected));
+   elo=Math.max(0,elo+delta);eloApplied=true;localStorage.setItem("ht_chess_elo",String(elo));
+   updateElo((delta>=0?"+":"")+delta+" ELO");
+   document.getElementById("eloSub").textContent="Đối thủ "+opponent+" ELO · Đã cập nhật sau ván.";
+  }
+ const files="abcdefgh";
+ function squareName(r,c){return files[c]+(8-r)}
+ let audioCtx=null;
+ function playSound(kind="move"){try{const C=window.AudioContext||window.webkitAudioContext;if(!C)return;audioCtx=audioCtx||new C();if(audioCtx.state==="suspended")audioCtx.resume();const now=audioCtx.currentTime;const notes=kind==="check"?[880,660]:kind==="capture"?[520,330]:kind==="win"?[523,659,784,1046]:kind==="lose"?[440,349,262]:[440];notes.forEach((freq,i)=>{const o=audioCtx.createOscillator(),g=audioCtx.createGain();o.type=kind==="check"?"square":"sine";o.frequency.value=freq;o.connect(g);g.connect(audioCtx.destination);const t=now+i*.1;g.gain.setValueAtTime(.0001,t);g.gain.exponentialRampToValueAtTime(.075,t+.018);g.gain.exponentialRampToValueAtTime(.0001,t+.16);o.start(t);o.stop(t+.17)});}catch(e){}}
+
+ let dragInfo=null;
+ board.addEventListener("pointerdown",e=>{
+  const cell=e.target.closest(".square");
+  if(!cell||busy||game.game_over()||game.turn()!=="w")return;
+  const from=cell.dataset.sq,piece=game.get(from);
+  if(!piece||piece.color!=="w")return;
+  dragInfo={from,x:e.clientX,y:e.clientY,pointerId:e.pointerId};
+ },{passive:true});
+ document.addEventListener("pointerup",e=>{
+  if(!dragInfo)return;
+  const info=dragInfo;dragInfo=null;
+  const moved=Math.hypot(e.clientX-info.x,e.clientY-info.y)>8;
+  if(!moved||busy||game.game_over()||game.turn()!=="w")return;
+  const target=document.elementFromPoint(e.clientX,e.clientY)?.closest?.(".square");
+  if(!target)return;
+  const to=target.dataset.sq;
+  const choices=game.moves({square:info.from,verbose:true}).filter(m=>m.to===to);
+  if(!choices.length)return;
+  selected=info.from;legal=game.moves({square:info.from,verbose:true});
+  if(choices.some(m=>m.flags.includes("p")))showPromotion(to);
+  else makeMove({from:info.from,to});
+ },{passive:true});
+
+ function render(){
+  board.innerHTML="";
+  const rows=flipped?[7,6,5,4,3,2,1,0]:[0,1,2,3,4,5,6,7];
+  rows.forEach((r,ri)=>{const cols=flipped?[7,6,5,4,3,2,1,0]:[0,1,2,3,4,5,6,7];cols.forEach((c,ci)=>{
+   const sq=squareName(r,c),p=game.get(sq),el=document.createElement("button");el.className="square "+((r+c)%2===0?"light":"dark");el.dataset.sq=sq;
+   if(selected===sq)el.classList.add("selected");if(lastMove&&(lastMove.from===sq||lastMove.to===sq))el.classList.add("last");
+   if(p){const span=document.createElement("span");span.className="piece "+(p.color==="w"?"white-piece":"black-piece");span.textContent=activeGlyphs[p.color+p.type];el.appendChild(span)}
+   if(game.in_check()&&p&&p.type==="k"&&p.color===game.turn())el.classList.add("in-check");
+   if(legal.some(m=>m.to===sq)){const mark=document.createElement("i");mark.className=p?"capture-mark":"dot";el.appendChild(mark)}
+   if(ci===0){const co=document.createElement("span");co.className="coord rank";co.textContent=String(flipped?ri+1:8-ri);el.appendChild(co)}
+   if(ri===7){const co=document.createElement("span");co.className="coord file";co.textContent=files[c];el.appendChild(co)}
+   el.addEventListener("click",()=>onSquare(sq));board.appendChild(el);
+  })});
+  renderMoves();updateStatus();updateCaptured();settleElo();
+ }
+ function renderMoves(){const hist=game.history();if(!hist.length){movesBox.innerHTML='<div class="tip">Các nước đi sẽ xuất hiện tại đây.</div>';return}let out="";for(let i=0;i<hist.length;i+=2)out+=`<div class="move-row"><span class="move-no">${i/2+1}.</span><span class="move-cell">${hist[i]||""}</span><span class="move-cell">${hist[i+1]||""}</span></div>`;movesBox.innerHTML=out;movesBox.scrollTop=movesBox.scrollHeight}
+ function updateStatus(){
+  const turn=game.turn()==="w"?"Trắng":"Đen";turnText.textContent=game.game_over()?"Ván đấu đã kết thúc":turn+" đang đi";
+  if(game.in_checkmate()){statusTitle.textContent="Chiếu hết!";statusSub.textContent=(game.turn()==="w"?"Máy tính":"Bạn")+" chiến thắng."}
+  else if(game.in_stalemate()||game.in_draw()){statusTitle.textContent="Ván cờ hòa";statusSub.textContent="Không có bên nào giành chiến thắng."}
+  else if(game.in_check()){statusTitle.textContent="Chiếu!";statusSub.textContent=turn+" đang bị chiếu."}
+  else {statusTitle.textContent=busy?"Máy đang suy nghĩ…": "Đến lượt "+turn;statusSub.textContent=game.turn()==="w"?"Chọn quân Trắng để thực hiện nước đi.":"Máy tính đang chuẩn bị nước đi."}
+  if(game.game_over()){endOverlay.classList.add("show");if(game.in_checkmate()){const userWon=game.turn()==="b";endTitle.textContent=userWon?"🎉 Chiếu hết — Bạn thắng!":"♟ Chiếu hết — Máy thắng";endText.textContent=userWon?"Máy không còn nước đi hợp lệ. Chúc mừng bạn!":"Vua của bạn bị chiếu hết. Hãy thử ván khác.";playSound(userWon?"win":"lose")}else{endTitle.textContent="🤝 Ván cờ hòa";endText.textContent=game.in_stalemate()?"Hòa do hết nước đi hợp lệ.":"Ván đấu kết thúc với kết quả hòa.";playSound("draw")}}
+ }
+ function onSquare(sq){
+  if(busy||game.game_over()||game.turn()!=="w")return;
+  toast.textContent="";
+  const piece=game.get(sq);
+  if(selected&&legal.some(m=>m.to===sq)){
+   const candidates=legal.filter(m=>m.to===sq);
+   if(candidates.some(m=>m.flags.includes("p"))){showPromotion(sq);return}
+   makeMove({from:selected,to:sq});return;
+  }
+  if(piece&&piece.color==="w"){selected=sq;legal=game.moves({square:sq,verbose:true});render();return}
+  selected=null;legal=[];render();
+ }
+ function showPromotion(to){promotion.innerHTML="";["q","r","b","n"].forEach(type=>{const b=document.createElement("button");b.textContent=glyph["w"+type];b.title=type;b.onclick=()=>{promotion.classList.remove("show");makeMove({from:selected,to,promotion:type})};promotion.appendChild(b)});promotion.classList.add("show")}
+ function makeMove(m){const result=game.move(m);if(!result)return;lastMove={from:result.from,to:result.to};selected=null;legal=[];hintMove=null;playSound(game.in_check()?"check":result.captured?"capture":"move");render();if(!game.game_over()&&game.turn()==="b")setTimeout(aiMove,180)}
+ function evaluate(g){if(g.in_checkmate())return g.turn()==="w"?-100000:100000;let score=0;const b=g.board();for(let r=0;r<8;r++)for(let c=0;c<8;c++){const p=b[r][c];if(!p)continue;let val=values[p.type];const advance=p.color==="w"?6-r:r-1;if(p.type==="p")val+=advance*8;if(p.type==="n"||p.type==="b")val+=(3.5-Math.abs(3.5-c))*5+(3.5-Math.abs(3.5-r))*4;if(p.type==="q")val+=(3.5-Math.abs(3.5-c))*2;score+=p.color==="w"?val:-val}return score}
+ function minimax(g,depth,alpha,beta,maximizing){if(depth===0||g.game_over())return evaluate(g);const ms=g.moves({verbose:true});if(maximizing){let best=-Infinity;for(const m of ms){g.move(m);best=Math.max(best,minimax(g,depth-1,alpha,beta,false));g.undo();alpha=Math.max(alpha,best);if(beta<=alpha)break}return best}else{let best=Infinity;for(const m of ms){g.move(m);best=Math.min(best,minimax(g,depth-1,alpha,beta,true));g.undo();beta=Math.min(beta,best);if(beta<=alpha)break}return best}}
+ function aiMove(){
+  if(game.game_over()||game.turn()!=="b")return;busy=true;updateStatus();const difficulty=level.value;const all=game.moves({verbose:true});let chosen;
+  if(difficulty==="easy"){const scored=all.map(m=>{game.move(m);const s=evaluate(game);game.undo();return {m,score:s+Math.random()*260}}).sort((a,b)=>a.score-b.score);chosen=scored[Math.floor(Math.random()*Math.min(5,scored.length))]?.m||all[0]}
+  else{const depth=difficulty==="medium"?2:3;let best=Infinity,candidates=[];for(const m of all){game.move(m);const score=minimax(game,depth-1,-Infinity,Infinity,true);game.undo();if(score<best){best=score;candidates=[m]}else if(score===best)candidates.push(m)}chosen=candidates[Math.floor(Math.random()*candidates.length)]||all[0]}
+  if(chosen){const result=game.move(chosen);lastMove={from:result.from,to:result.to};playSound(game.in_check()?"check":result.captured?"capture":"move")}
+  busy=false;render();
+ }
+ document.getElementById("newGame").onclick=()=>{game.reset();eloApplied=false;updateElo("");document.getElementById("eloSub").textContent="Mức khởi đầu: 100 ELO · Điểm được cập nhật sau mỗi ván.";endOverlay.classList.remove("show");selected=null;legal=[];lastMove=null;busy=false;promotion.classList.remove("show");toast.textContent="";render();playSound("move")};
+ 
+ document.getElementById("flip").onclick=()=>{flipped=!flipped;render()};
+ document.getElementById("hint").onclick=()=>{if(game.turn()!=="w"||game.game_over())return;const ms=game.moves({verbose:true});let best=-Infinity;for(const m of ms){game.move(m);const s=evaluate(game);game.undo();if(s>best){best=s;hintMove=m}}if(hintMove){selected=hintMove.from;legal=ms.filter(m=>m.from===selected);render();toast.textContent="Gợi ý: "+hintMove.from+" → "+hintMove.to}};
+ document.getElementById("endNew").onclick=()=>document.getElementById("newGame").click();
+ level.onchange=()=>{
+  const label="Máy tính · "+({easy:"Dễ",medium:"Trung bình",hard:"Khó"}[level.value]);
+  document.getElementById("engineLabelTop").textContent=label+" · Đen";
+  toast.textContent="Đã đổi độ khó cho nước đi tiếp theo.";
+ };
+ document.getElementById("themeChoice").addEventListener("change",e=>{
+  document.body.dataset.theme=e.target.value;
+  toast.textContent="Đã đổi màu giao diện.";
+ });
+ document.getElementById("boardChoice").addEventListener("change",e=>{
+  document.body.dataset.board=e.target.value;
+  toast.textContent="Đã đổi màu bàn cờ.";
+ });
+ document.getElementById("pieceChoice").addEventListener("change",e=>{
+  const style=e.target.value;
+  document.body.dataset.piece=style==="mono"?"minimal":style;
+  activeGlyphs=style==="mono"?glyphSets.mono:glyphSets.classic;
+  render();
+  toast.textContent="Đã đổi kiểu quân cờ.";
+ });
+ document.body.dataset.theme="blue";
+ document.body.dataset.board="default";
+ document.body.dataset.piece="classic";
+ render();
+})();
+</script>
+</body>
+</html>
